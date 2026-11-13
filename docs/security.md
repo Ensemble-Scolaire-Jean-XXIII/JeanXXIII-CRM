@@ -7,16 +7,16 @@ d'investigation côté serveur.
 
 ### Comptes et sessions
 
-| Mesure | Détail |
-| --- | --- |
-| Mots de passe | `bcryptjs` (12 facteurs par défaut via `genSalt(10)`), jamais stockés en clair |
-| Politique de mot de passe | regex minimale appliquée à la création et à chaque changement (`passwordRegex` dans `utils/validators.ts`) |
-| Session | JWT signé HS256, secret `JWT_SECRET` **obligatoire ≥ 32 caractères** — le backend refuse de démarrer sinon |
-| Expiration | 2 h (login) / 6 h (ré-authentification mode Salon) |
-| Anti-énumération | login : hash `bcrypt` factice quand l'email est inconnu, message identique ; « mot de passe oublié » répond toujours `200` sans révéler l'existence du compte |
-| Réinitialisation | token UUID **stocké haché (SHA-256)** en base, expiration 1 h, supprimé après usage ; le lien n'est envoyé que si le paramètre `password_reset_enabled` est actif |
-| Vérification d'algorithme | `jwt.verify(..., { algorithms: ["HS256"] })` — pas de confusion d'algorithme |
-| Audit | toute action CRUD sensible journalisée dans `audit_logs` (`user_id`, action, ressource, détail) |
+| Mesure                    | Détail                                                                                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mots de passe             | `bcryptjs` (12 facteurs par défaut via `genSalt(10)`), jamais stockés en clair                                                                                    |
+| Politique de mot de passe | regex minimale appliquée à la création et à chaque changement (`passwordRegex` dans `utils/validators.ts`)                                                        |
+| Session                   | JWT signé HS256, secret `JWT_SECRET` **obligatoire ≥ 32 caractères** — le backend refuse de démarrer sinon                                                        |
+| Expiration                | 2 h (login) / 6 h (ré-authentification mode Salon)                                                                                                                |
+| Anti-énumération          | login : hash `bcrypt` factice quand l'email est inconnu, message identique ; « mot de passe oublié » répond toujours `200` sans révéler l'existence du compte     |
+| Réinitialisation          | token UUID **stocké haché (SHA-256)** en base, expiration 1 h, supprimé après usage ; le lien n'est envoyé que si le paramètre `password_reset_enabled` est actif |
+| Vérification d'algorithme | `jwt.verify(..., { algorithms: ["HS256"] })` — pas de confusion d'algorithme                                                                                      |
+| Audit                     | toute action CRUD sensible journalisée dans `audit_logs` (`user_id`, action, ressource, détail)                                                                   |
 
 ### Limitation de débit
 
@@ -26,8 +26,8 @@ d'investigation côté serveur.
   - `POST /api/users/forgot-password` : 30 / 30 min par IP + 10 / 30 min par email ;
   - `POST /api/users/reset-password` : 30 / 30 min par IP ;
   - `POST /api/webhooks/wordpress` : 60 / 15 min par IP (brute-force du secret).
-- **Edge nginx** : fail2ban avec jail `nginx-limit-req` (voir README, section
-  Fail2ban).
+- **Edge nginx** : fail2ban avec jail `nginx-limit-req` (voir la section
+  Fail2ban ci-dessous).
 
 ### Entrées et erreurs
 
@@ -51,16 +51,16 @@ Restreint à `FRONTEND_URL` (pas de `*`), méthodes et en-têtes limités.
 
 ### Conteneurs (prod)
 
-| Mesure | Backend | Frontend | DB |
-| --- | --- | --- | --- |
-| Utilisateur non-root | `USER node` | `USER node` | utilisateur `mysql` |
-| `cap_drop: ALL` | ✅ | ✅ | — |
-| `no-new-privileges` | ✅ | ✅ | ✅ |
-| Système de fichiers | `read_only` + `tmpfs /tmp` | écriture limitée (cache Next) | volume dédié |
-| Ports hôte | aucun | aucun | aucun |
-| Réseau | `internal` + `proxy-net` | `internal` + `proxy-net` | `internal` uniquement |
-| Healthcheck | `/healthz` (ping DB) | `GET /` | `healthcheck.sh` |
-| `dump.sql` | — | — | monté en lecture seule |
+| Mesure               | Backend                    | Frontend                      | DB                     |
+| -------------------- | -------------------------- | ----------------------------- | ---------------------- |
+| Utilisateur non-root | `USER node`                | `USER node`                   | utilisateur `mysql`    |
+| `cap_drop: ALL`      | ✅                         | ✅                            | —                      |
+| `no-new-privileges`  | ✅                         | ✅                            | ✅                     |
+| Système de fichiers  | `read_only` + `tmpfs /tmp` | écriture limitée (cache Next) | volume dédié           |
+| Ports hôte           | aucun                      | aucun                         | aucun                  |
+| Réseau               | `internal` + `proxy-net`   | `internal` + `proxy-net`      | `internal` uniquement  |
+| Healthcheck          | `/healthz` (ping DB)       | `GET /`                       | `healthcheck.sh`       |
+| `dump.sql`           | —                          | —                             | monté en lecture seule |
 
 Les services ne sont joignables que via le proxy nginx (réseau `proxy-net`),
 jamais depuis l'hôte ou Internet.
@@ -75,15 +75,15 @@ jamais depuis l'hôte ou Internet.
 
 ## Limites assumées
 
-| Sujet | État |
-| --- | --- |
-| Stockage du JWT | `localStorage` côté client : un XSS réussi vole le token. Atténué par l'absence d'injection de HTML utilisateur et par la durée courte (2 h). La migration vers un cookie `httpOnly` est le chantier recommandé |
-| CSRF | pas de jeton CSRF — le JWT voyage dans l'en-tête `Authorization`, pas en cookie : les requêtes cross-site ne portent pas le token |
-| CSP | pas de `Content-Security-Policy` stricte au niveau applicatif ; à poser côté nginx (voir ci-dessous) après test |
-| Révocation de JWT | un token volé reste valide jusqu'à expiration ; pas de liste noire |
-| HTTPS | terminé par nginx (certbot) ; HSTS à activer côté nginx |
-| `/api/settings/:key` | lecture publique (booléen) — assumé, ne jamais y stocker de secret |
-| Dump initial | `dump.sql` sert à initialiser un volume vide ; ne contient que le schéma, jamais de données |
+| Sujet                | État                                                                                                                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stockage du JWT      | `localStorage` côté client : un XSS réussi vole le token. Atténué par l'absence d'injection de HTML utilisateur et par la durée courte (2 h). La migration vers un cookie `httpOnly` est le chantier recommandé |
+| CSRF                 | pas de jeton CSRF — le JWT voyage dans l'en-tête `Authorization`, pas en cookie : les requêtes cross-site ne portent pas le token                                                                               |
+| CSP                  | pas de `Content-Security-Policy` stricte au niveau applicatif ; à poser côté nginx (voir ci-dessous) après test                                                                                                 |
+| Révocation de JWT    | un token volé reste valide jusqu'à expiration ; pas de liste noire                                                                                                                                              |
+| HTTPS                | terminé par nginx (certbot) ; HSTS à activer côté nginx                                                                                                                                                         |
+| `/api/settings/:key` | lecture publique (booléen) — assumé, ne jamais y stocker de secret                                                                                                                                              |
+| Dump initial         | `dump.sql` sert à initialiser un volume vide ; ne contient que le schéma, jamais de données                                                                                                                     |
 
 ## Recommandations nginx (hors dépôt, à poser dans `conf.d`)
 
@@ -111,7 +111,7 @@ add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" alway
 
 ## Maintenance courante (serveur)
 
-Commandes d'exploitation (à usage interne, pas dans le README public).
+Commandes d'exploitation.
 
 ### Proxy (nginx + certbot)
 
@@ -122,14 +122,77 @@ docker exec nginx-proxy-prod nginx -t                        # test config
 docker exec nginx-proxy-prod nginx -s reload                 # reload conf
 ```
 
-> **Recharger nginx après chaque déploiement de l'app** : `docker compose
-> build` recrée les conteneurs et leurs IP sur `proxy-net` changent. La conf
-> `proxy_pass http://frontend-jeanxxiii-crm-prod:3000` résout le nom **une
-> seule fois** au chargement — sans reload, nginx pointe sur une IP morte et
-> renvoie des 502 malgré des healthchecks verts. Solution durable : déclarer
-> `resolver 127.0.0.11 valid=30s;` et passer par une variable
-> (`set $upstream http://...; proxy_pass $upstream;`) pour une résolution
-> dynamique. Le workflow `deploy.yml` fait le reload automatiquement.
+> **Aucun reload n'est nécessaire après un déploiement** : la configuration
+> résout les noms de conteneurs dynamiquement (voir la section suivante). Le
+> workflow `deploy.yml` ne recharge plus nginx.
+
+### Résolution DNS des upstreams (502 après redéploiement)
+
+`proxy_pass http://frontend-jeanxxiii-crm-prod:3000` résout le nom **une seule
+fois**, au chargement de la configuration. Un `docker compose build` recrée les
+conteneurs avec de nouvelles IP sur `proxy-net` : nginx continue d'envoyer vers
+l'ancienne et renvoie `502` alors que les healthchecks sont verts.
+
+Dans `nginx/conf.d/default.conf`, déclarer le résolveur Docker (contexte
+`http`) et passer chaque upstream par une variable. nginx re-résout alors à
+chaque intervalle `valid`, sans reload :
+
+```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+server {
+    listen 443 ssl;
+    server_name crm.jean23.com;
+
+    set $crm_backend  http://backend-jeanxxiii-crm-prod:5000;
+    set $crm_frontend http://frontend-jeanxxiii-crm-prod:3000;
+
+    location /api/users/login {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass $crm_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/users/forgot-password {
+        limit_req zone=auth_limit burst=3 nodelay;
+        proxy_pass $crm_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        limit_req zone=api_limit burst=100 nodelay;
+        proxy_pass $crm_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass $crm_frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Appliquer une seule fois : `docker exec nginx-proxy-prod nginx -t` puis
+`docker exec nginx-proxy-prod nginx -s reload`. Ensuite, plus aucun reload
+après un déploiement. Même principe pour les vhosts `defi6e` et `inventory`
+(un couple de variables par service).
+
+`proxy_pass $variable;` sans chemin conserve l'URI d'origine, donc les
+`location` n'ont pas besoin de réécriture. Si l'image nginx est ≥ 1.27.3,
+l'alternative `upstream … { server … resolve; }` avec `resolver` donne le même
+résultat avec un `proxy_pass` statique.
 
 ### Fail2ban
 
@@ -275,7 +338,7 @@ sudo find / -xdev -type f -perm -4000 2>/dev/null
 
 ```sh
 # Ports ouverts sur toutes les interfaces
-sudo ss -tulpn | grep -E "0.0.0.0|:::" 
+sudo ss -tulpn | grep -E "0.0.0.0|:::"
 # En prod, seuls 80/443 (nginx) et 22 (SSH) devraient être en 0.0.0.0.
 # Si 3306 ou 5000 apparaissent, c'est anormal.
 
@@ -288,7 +351,7 @@ docker port $(docker ps -q) 2>/dev/null
 1. **Isoler** : `docker compose -f docker-compose.prod.yml stop` (l'app),
    garder les volumes et images pour l'analyse.
 2. **Figer les preuves** : `sudo tar czf /tmp/forensics-$(date +%s).tgz
-   /home/jeanxxiii-apps/nginx/logs` et un dump des logs Docker.
+/home/jeanxxiii-apps/nginx/logs` et un dump des logs Docker.
 3. **Bannir** : `sudo fail2ban-client set nginx-limit-req banip <IP>`.
 4. **Changer les secrets** : `JWT_SECRET`, mots de passe DB, `WEBHOOK_SECRET`,
    SMTP, L'Express (`.env` puis `make prod-restart`).

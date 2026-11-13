@@ -36,16 +36,20 @@ This project is structured as a monorepo containing both the frontend client and
 
 You need to set up environment variables for the containers to run correctly.
 
-Create a `.env` file for development and a `.env.prod` file for production at the root of the repository. Include the following necessary keys in both files, adjusting values appropriately for the target environment:
+Create a `.env` file for development and a `.env.prod` file for production at the root of the repository. Adjust values appropriately for the target environment.
+
+Development-only variables:
 
 ```env
-# Dev only
 FRONTEND_PORT=3000
 BACKEND_PORT=5000
 DB_PORT=3306
 NEXT_PUBLIC_API_URL=
+```
 
-# Prod + Dev
+Variables required in both development and production:
+
+```env
 MYSQL_ROOT_PASSWORD=
 MYSQL_DATABASE=
 MYSQL_USER=
