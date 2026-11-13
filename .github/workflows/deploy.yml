@@ -21,4 +21,7 @@ jobs:
 
           make prod-up
 
+          # Re-resolve upstream names (container IPs change on rebuild)
+          docker exec nginx-proxy-prod nginx -s reload
+
           docker image prune -f

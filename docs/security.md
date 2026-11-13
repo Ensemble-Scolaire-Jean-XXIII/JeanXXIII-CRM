@@ -109,6 +109,48 @@ add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" alway
 - Ne pas rouvrir `cors()` sans restriction d'origine.
 - Ne pas retirer `USER node` des Dockerfiles de prod.
 
+## Maintenance courante (serveur)
+
+Commandes d'exploitation (à usage interne, pas dans le README public).
+
+### Proxy (nginx + certbot)
+
+```sh
+make proxy-up / proxy-down / proxy-restart / proxy-status    # cycle de vie
+make proxy-logs / proxy-logs-error                           # logs des 2 conteneurs
+docker exec nginx-proxy-prod nginx -t                        # test config
+docker exec nginx-proxy-prod nginx -s reload                 # reload conf
+```
+
+> **Recharger nginx après chaque déploiement de l'app** : `docker compose
+> build` recrée les conteneurs et leurs IP sur `proxy-net` changent. La conf
+> `proxy_pass http://frontend-jeanxxiii-crm-prod:3000` résout le nom **une
+> seule fois** au chargement — sans reload, nginx pointe sur une IP morte et
+> renvoie des 502 malgré des healthchecks verts. Solution durable : déclarer
+> `resolver 127.0.0.11 valid=30s;` et passer par une variable
+> (`set $upstream http://...; proxy_pass $upstream;`) pour une résolution
+> dynamique. Le workflow `deploy.yml` fait le reload automatiquement.
+
+### Fail2ban
+
+```sh
+sudo fail2ban-client status                          # tous les jails
+sudo fail2ban-client status nginx-limit-req          # jail + bans
+make f2b-status / f2b-banned                         # raccourcis
+make f2b-unban IP=x.x.x.x                            # débannir
+sudo fail2ban-client set nginx-limit-req addignoreip x.x.x.x   # whitelist runtime
+# whitelist persistante : /etc/fail2ban/jail.local → ignoreip puis
+# sudo systemctl restart fail2ban
+```
+
+### Certificats et logs
+
+```sh
+make cert-renew / cert-renew-dry                     # renew + reload nginx / dry-run
+sudo logrotate -d /etc/logrotate.d/nginx-docker      # dry-run rotation
+sudo logrotate -f /etc/logrotate.d/nginx-docker      # forcer la rotation
+```
+
 ## Surveillance et investigation du serveur
 
 Commandes à exécuter **sur le serveur** (en tant que `jeanxxiii-apps`, avec
