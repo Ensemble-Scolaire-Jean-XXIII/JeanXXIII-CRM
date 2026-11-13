@@ -9,7 +9,7 @@ router.get("/", async (req, res) => {
     const formations = await formationService.getAllFormations();
     res.json(formations);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -25,7 +25,7 @@ router.post("/", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Une formation avec ce nom existe déjà." });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -45,7 +45,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Une formation avec ce nom existe déjà." });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -57,7 +57,7 @@ router.delete("/:id", authenticate, async (req: any, res) => {
     if (error.message && error.message.includes("Impossible de supprimer")) {
       return res.status(400).json({ error: error.message });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

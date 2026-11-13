@@ -9,7 +9,7 @@ router.get("/:key", async (req, res) => {
     const value = await settingService.getSetting(req.params.key);
     res.json({ enabled: value === "true" });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -26,7 +26,7 @@ router.put("/:key", authenticate, async (req: any, res) => {
     );
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

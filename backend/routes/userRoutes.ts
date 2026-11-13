@@ -12,7 +12,16 @@ import { FRONTEND_URL } from "../config/appConfig";
 
 const router = Router();
 
-const loginLimiter = rateLimit({
+const authIpLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => req.ip || "anonymous",
+  message: { error: "Trop de tentatives. Réessayez dans 30 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authEmailLimiter = rateLimit({
   windowMs: 30 * 60 * 1000,
   max: 10,
   keyGenerator: (req) => req.body.email || "anonymous",
@@ -21,10 +30,10 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const passwordResetLimiter = rateLimit({
+const passwordResetIpLimiter = rateLimit({
   windowMs: 30 * 60 * 1000,
-  max: 10,
-  keyGenerator: (req) => req.body.email || "anonymous",
+  max: 30,
+  keyGenerator: (req) => req.ip || "anonymous",
   message: { error: "Trop de tentatives. Réessayez dans 30 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -74,7 +83,7 @@ router.get("/", authenticate, async (req: any, res) => {
     const users = await userService.getAllUsers();
     res.json(users);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -122,11 +131,11 @@ router.post("/", authenticate, async (req: any, res) => {
 
     res.status(201).json({ id });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
-router.post("/login", loginLimiter, async (req, res) => {
+router.post("/login", authIpLimiter, authEmailLimiter, async (req, res) => {
   try {
     const user = await userService.getUserByEmail(req.body.email);
 
@@ -150,11 +159,11 @@ router.post("/login", loginLimiter, async (req, res) => {
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET as string,
-      { expiresIn: "2h" },
+      { expiresIn: "2h", algorithm: "HS256" },
     );
     res.json({ token });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -173,12 +182,12 @@ router.post("/reauthenticate", authenticate, async (req: any, res) => {
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET as string,
-      { expiresIn: "6h" },
+      { expiresIn: "6h", algorithm: "HS256" },
     );
 
     res.json({ token });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -188,7 +197,7 @@ router.get("/me", authenticate, async (req: any, res) => {
     if (!user) return res.status(404).json({ error: "Not found" });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -247,7 +256,7 @@ router.put("/me", authenticate, async (req: any, res) => {
 
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -277,7 +286,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
     await userService.updateUser(req.params.id, req.body, req.user.id);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -289,34 +298,41 @@ router.delete("/:id", authenticate, async (req: any, res) => {
     await userService.deleteUser(req.params.id, req.user.id);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
-router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
-  try {
-    const isEnabled = await settingService.getSetting("password_reset_enabled");
-    if (isEnabled !== "true")
-      return res.status(403).json({ error: "Fonctionnalité désactivée" });
+router.post(
+  "/forgot-password",
+  passwordResetIpLimiter,
+  authEmailLimiter,
+  async (req, res) => {
+    try {
+      const isEnabled = await settingService.getSetting(
+        "password_reset_enabled",
+      );
+      if (isEnabled !== "true")
+        return res.status(403).json({ error: "Fonctionnalité désactivée" });
 
-    const user = await userService.getUserByEmail(req.body.email);
-    if (!user) {
-      return res
+      const user = await userService.getUserByEmail(req.body.email);
+      if (!user) {
+        return res
+          .status(200)
+          .json({ message: "Si l'email existe, un lien a été envoyé." });
+      }
+
+      await sendPasswordResetEmail(user);
+
+      res
         .status(200)
         .json({ message: "Si l'email existe, un lien a été envoyé." });
+    } catch (error) {
+      res.status(500).json({ error: "Erreur interne au serveur" });
     }
+  },
+);
 
-    await sendPasswordResetEmail(user);
-
-    res
-      .status(200)
-      .json({ message: "Si l'email existe, un lien a été envoyé." });
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.post("/reset-password", passwordResetLimiter, async (req, res) => {
+router.post("/reset-password", passwordResetIpLimiter, async (req, res) => {
   try {
     const { token, password_hash } = req.body;
 
@@ -342,7 +358,7 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
     await userService.resetPassword(userId, password_hash);
     res.status(200).json({ message: "Mot de passe modifié avec succès" });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -363,7 +379,7 @@ router.post("/:id/reset-password", authenticate, async (req: any, res) => {
       message: `Lien de réinitialisation envoyé à ${user.email}`,
     });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

@@ -17,12 +17,42 @@ import settingRoutes from "./routes/settingRoutes";
 import { authenticate } from "./middleware/auth";
 import { processAutomations } from "./services/automationService";
 import { syncLatestLexpressSubmissionsToDb } from "./services/lexpressService";
+import { FRONTEND_URL } from "./config/appConfig";
+import { pool } from "./config/db";
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error(
+    "JWT_SECRET manquant ou trop court (32 caractères minimum) — générer : openssl rand -hex 32",
+  );
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.json());
+app.disable("x-powered-by");
+
+if (process.env.TRUST_PROXY === "true") {
+  app.set("trust proxy", 1);
+}
+
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-webhook-secret"],
+  }),
+);
+app.use(express.json({ limit: "1mb" }));
+
+app.get("/healthz", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({ status: "ok" });
+  } catch (error) {
+    console.error("Healthcheck DB en échec :", error);
+    res.status(503).json({ status: "error" });
+  }
+});
 
 app.use("/api/settings", settingRoutes);
 app.use("/api/users", userRoutes);
@@ -36,10 +66,13 @@ app.use("/api/formations", authenticate, formationRoutes);
 app.use("/api/audit-logs", authenticate, auditLogRoutes);
 app.use("/api/webhooks", webhookRoutes);
 
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
+
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  res
-    .status(500)
-    .json({ error: "Internal Server Error", details: err.message });
+  console.error("Erreur non gérée :", err);
+  res.status(500).json({ error: "Erreur interne au serveur" });
 });
 
 cron.schedule("*/2 * * * *", async () => {

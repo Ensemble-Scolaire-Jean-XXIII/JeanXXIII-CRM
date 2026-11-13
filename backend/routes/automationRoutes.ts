@@ -9,7 +9,7 @@ router.get("/", authenticate, async (req, res) => {
     const rules = await automationService.getAutomationRules();
     res.json(rules);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -26,7 +26,7 @@ router.post("/", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Une règle d'automatisation identique existe déjà." });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -39,7 +39,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
     );
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -51,7 +51,7 @@ router.delete("/:id", authenticate, async (req: any, res) => {
     );
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

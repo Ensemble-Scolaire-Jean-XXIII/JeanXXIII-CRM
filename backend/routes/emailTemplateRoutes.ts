@@ -9,7 +9,7 @@ router.get("/", authenticate, async (req, res) => {
     const templates = await emailTemplateService.getAllEmailTemplates();
     res.json(templates);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -21,7 +21,7 @@ router.get("/:id", authenticate, async (req, res) => {
     if (!template) return res.status(404).json({ error: "Not found" });
     res.json(template);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -43,7 +43,7 @@ router.post("/", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Le nom ne doit pas dépasser 100 caractères." });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -66,7 +66,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Le nom ne doit pas dépasser 100 caractères." });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -81,7 +81,7 @@ router.delete("/:id", authenticate, async (req: any, res) => {
     if (error.message && error.message.includes("Impossible de supprimer")) {
       return res.status(400).json({ error: error.message });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

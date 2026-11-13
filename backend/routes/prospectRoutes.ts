@@ -10,7 +10,7 @@ router.get("/", authenticate, async (req, res) => {
     const prospects = await prospectService.getAllProspects();
     res.json(prospects);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -22,7 +22,7 @@ router.get("/:id", authenticate, async (req, res) => {
     if (!prospect) return res.status(404).json({ error: "Not found" });
     res.json(prospect);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -37,7 +37,7 @@ router.post("/", authenticate, async (req: any, res) => {
     if (error.message === "EMAIL_EXISTS") {
       return res.status(409).json({ error: "Cet email est déjà utilisé" });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -76,7 +76,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
     if (error.message === "EMAIL_EXISTS") {
       return res.status(409).json({ error: "Cet email est déjà utilisé" });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -85,7 +85,7 @@ router.delete("/:id", authenticate, async (req: any, res) => {
     await prospectService.deleteProspect(req.params.id as string, req.user.id);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

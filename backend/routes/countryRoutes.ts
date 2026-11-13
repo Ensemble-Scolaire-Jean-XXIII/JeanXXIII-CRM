@@ -8,7 +8,7 @@ router.get("/", async (req, res) => {
     const countries = await countryService.getAllCountries();
     res.json(countries);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

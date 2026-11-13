@@ -2,7 +2,11 @@ import { pool } from "../config/db";
 import { User } from "../models/types";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { logAction } from "./auditLogService";
+
+const hashToken = (token: string): string =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 export const getAllUsers = async (): Promise<User[]> => {
   const [rows] = await pool.query(
@@ -116,7 +120,7 @@ export const createResetToken = async (userId: string): Promise<string> => {
 
   await pool.query(
     "INSERT INTO tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, 'PASSWORD_RESET', ?)",
-    [tokenId, userId, token, expiresAt],
+    [tokenId, userId, hashToken(token), expiresAt],
   );
   return token;
 };
@@ -126,7 +130,7 @@ export const validateResetToken = async (
 ): Promise<string | null> => {
   const [rows] = await pool.query(
     "SELECT user_id FROM tokens WHERE token = ? AND type = 'PASSWORD_RESET' AND expires_at > NOW()",
-    [token],
+    [hashToken(token)],
   );
   const tokens = rows as any[];
   return tokens.length > 0 ? tokens[0].user_id : null;

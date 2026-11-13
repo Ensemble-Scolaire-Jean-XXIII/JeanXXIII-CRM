@@ -1,13 +1,36 @@
 import { Router } from "express";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 import * as prospectService from "../services/prospectService";
 import { getOrCreateFormationByName } from "../services/formationService";
 import { getCountryIdByName } from "../services/countryService";
 
 const router = Router();
 
-router.post("/wordpress", async (req, res) => {
+const webhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => req.ip || "anonymous",
+  message: { error: "Trop de requêtes. Réessayez plus tard." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/wordpress", webhookLimiter, async (req, res) => {
   const webhookSecret = req.headers["x-webhook-secret"];
-  if (!webhookSecret || webhookSecret !== process.env.WEBHOOK_SECRET) {
+  const expected = crypto
+    .createHash("sha256")
+    .update(String(process.env.WEBHOOK_SECRET || ""))
+    .digest();
+  const provided = crypto
+    .createHash("sha256")
+    .update(String(webhookSecret || ""))
+    .digest();
+  if (
+    !webhookSecret ||
+    expected.length !== provided.length ||
+    !crypto.timingSafeEqual(expected, provided)
+  ) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -68,7 +91,7 @@ router.post("/wordpress", async (req, res) => {
       .json({ success: true, message: "Prospect traité avec succès" });
   } catch (error) {
     console.error("Erreur Webhook WP:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
