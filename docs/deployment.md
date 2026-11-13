@@ -99,10 +99,12 @@ le publier) et en vérifier régulièrement la restauration.
 
 - nginx + certbot : `make proxy-up/down/restart/status` (depuis le dépôt
   nginx), `nginx -t` puis `nginx -s reload` après modification de `conf.d`.
+  Les upstreams sont résolus dynamiquement (`resolver 127.0.0.11`), donc un
+  redéploiement de l'application ne nécessite aucun reload.
 - Certificats : `make cert-renew` (renew + reload), `make cert-renew-dry`.
 - fail2ban : `make f2b-status` / `make f2b-banned` / `make f2b-unban IP=...`.
 - Rotation des logs nginx : `/etc/logrotate.d/nginx-docker`.
-- Détail complet : [README](../../README.md).
+- Détail complet : [security.md](security.md).
 
 ## CI/CD et dépendances
 

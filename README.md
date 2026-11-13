@@ -1,129 +1,143 @@
-# Jean XXIII Apps — Ops
+# CRM Application
 
-CRM pour l'Ensemble Scolaire Jean XXIII : prospects, templates email,
-automatisations, mode Salon, synchronisation L'Express, webhook WordPress.
+A modular, self-hosted Customer Relationship Management (CRM) system designed to manage prospects, automate email workflows, and synchronize data with external sources.
 
-- Documentation détaillée : [`docs/`](docs/) — architecture, API, déploiement,
-  sécurité, workflow, standards.
-- Environnements : `make dev-*` (ports hôtes, hot reload) et `make prod-*`
-  (réseau interne + `proxy-net`, aucun port hôte).
+## Overview
 
-## Containers
+This project is structured as a monorepo containing both the frontend client and the backend API. It relies entirely on Docker for both development and production environments, eliminating the need for local Node.js or database installations.
 
-### Voir les IP de tous les containers
-docker inspect --format '{{.Name}} - {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -q)
+## Architecture & Tech Stack
 
-### Voir les containers en cours
-docker ps
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+### Frontend (`/frontend`)
 
-## App (jeanxxiii-crm : db/backend/frontend)
+- **Framework:** Next.js (React)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
 
-### Depuis /home/jeanxxiii-apps/jeanxxiii-crm
-make prod-up / prod-down / prod-build / prod-logs / prod-restart
-make prod-ps              # état des conteneurs
-make prod-health          # statut des healthchecks (db → backend → frontend)
-make prod-pull            # met à jour l'image mariadb:10.11 (patchs sécurité)
-make audit                # npm audit (deps de prod) — doit rester à 0
+### Backend (`/backend`)
 
-make dev-up / dev-down / dev-build / dev-logs
+- **Framework:** Express (Node.js)
+- **Language:** TypeScript
+- **Database:** MariaDB 10.11
 
-### Mise à jour manuelle (équivalent du déploiement CI)
-git pull origin main
-make prod-down
-docker compose -f docker-compose.prod.yml build --no-cache
-make prod-up
-docker image prune -f
+### Infrastructure
 
-## Proxy (nginx + certbot)
+- **Containerization:** Docker & Docker Compose
+- **Task Automation:** Makefile
+- **Network (Production):** Cloudflare Tunnel (Zero Trust) for secure public access.
 
-### Cycle de vie
-make proxy-up           # start
-make proxy-down         # stop
-make proxy-restart      # restart
-make proxy-status       # ps
-make proxy-net-create   # créer le réseau proxy-net s'il n'existe pas
+## Prerequisites
 
-### Logs
-make proxy-logs            # logs les 2 containers
-make proxy-logs-error      # grep error/warn
-make proxy-logs-nginx      # tail -f error.log (hôte)
+- Docker and Docker Compose plugin installed.
+- `make` utility installed on your host machine.
+- A Cloudflare account (for production deployment).
 
-### Reload nginx (après modif conf.d)
-docker exec nginx-proxy-prod nginx -t           # test config
-docker exec nginx-proxy-prod nginx -s reload    # reload
+## Environment Configuration
 
-## Fail2ban
+You need to set up environment variables for the containers to run correctly.
 
-sudo fail2ban-client status                     # tous les jails
-sudo fail2ban-client status nginx-limit-req     # jail + bans
-make f2b-status                                 # raccourci
-make f2b-banned                                 # liste des IP bannies
-make f2b-unban IP=x.x.x.x                       # débannir
-make f2b-unban IP=77.135.208.90                 # débannir réseau Jean23
-make f2b-test                                   # 30 requêtes (DEPUIS TON PC, pas le serveur)
+Create a `.env` file for development and a `.env.prod` file for production at the root of the repository. Adjust values appropriately for the target environment.
 
-### Whitelist une IP (persistant)
-# /etc/fail2ban/jail.local → ignoreip = ... puis:
-sudo systemctl restart fail2ban
-sudo fail2ban-client get nginx-limit-req ignoreip   # vérifier
+Development-only variables:
 
-### Add sans redémarrage (runtime)
-sudo fail2ban-client set nginx-limit-req addignoreip x.x.x.x
-
-## Certbot
-
-make cert-renew          # renew + reload nginx
-make cert-renew-dry      # dry-run
-
-## Log rotation (nginx)
-
-sudo logrotate -d /etc/logrotate.d/nginx-docker   # dry-run
-sudo logrotate -f /etc/logrotate.d/nginx-docker   # force
-ls -la /home/jeanxxiii-apps/nginx/logs/
-
-## Sécurité — investigation serveur
-
-Si « des choses étranges » apparaissent, dérouler dans l'ordre
-(guide complet dans [`docs/security.md`](docs/security.md#surveillance-et-investigation-du-serveur)) :
-
-```sh
-# 1. Conteneurs et santé
-docker ps -a --format "table {{.Names}}\t{{.Status}}"
-docker events --since 72h
-
-# 2. Qui tape sur l'app et le proxy
-docker compose -f docker-compose.prod.yml logs backend-jeanxxiii-crm | grep -E "401|429" | tail -50
-sudo awk '{print $1}' /home/jeanxxiii-apps/nginx/logs/access.log | sort | uniq -c | sort -rn | head -20
-
-# 3. Connexions et processus
-sudo ss -tulpn | grep -E "0.0.0.0|:::"
-sudo ss -tanp | grep ESTAB
-ps auxf --sort=-%cpu | head -30
-sudo crontab -l; sudo ls -la /etc/cron.*
-
-# 4. Connexions SSH et comptes
-last -a -20
-sudo lastb -a -20
-sudo grep -E "sh$" /etc/passwd
-sudo grep -E "COMMAND" /var/log/auth.log | tail -30
-
-# 5. Fail2ban
-sudo fail2ban-client status
-sudo zgrep "Ban " /var/log/fail2ban.log* | tail -30
-
-# 6. Base : processus, utilisateurs, derniers audits
-docker exec db-jeanxxiii-crm-prod mariadb -u root -p"$MYSQL_ROOT_PASSWORD" -e "SHOW PROCESSLIST;"
-
-# 7. Fichiers récents et binaires suspects
-sudo find /etc /home /tmp /var/tmp /usr/local/bin -type f -mtime -7 2>/dev/null | grep -vE "/var/log|/var/lib|/var/cache" | head -50
-sudo find /tmp /var/tmp /dev/shm -type f -perm -u+x 2>/dev/null
+```env
+FRONTEND_PORT=3000
+BACKEND_PORT=5000
+DB_PORT=3306
+NEXT_PUBLIC_API_URL=
 ```
 
-### Si une compromission est confirmée
+Variables required in both development and production:
 
-1. `docker compose -f docker-compose.prod.yml stop` (isoler sans détruire)
-2. Figer les logs : `sudo tar czf /tmp/forensics-$(date +%s).tgz /home/jeanxxiii-apps/nginx/logs`
-3. Bannir : `sudo fail2ban-client set nginx-limit-req banip <IP>`
-4. **Changer tous les secrets** (`JWT_SECRET`, mots de passe DB, `WEBHOOK_SECRET`, SMTP, L'Express) puis `make prod-restart`
-5. Ne **jamais** `down -v` avant d'avoir compris ce qui s'est passé
+```env
+MYSQL_ROOT_PASSWORD=
+MYSQL_DATABASE=
+MYSQL_USER=
+MYSQL_PASSWORD=
+
+JWT_SECRET=
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+
+LEXPRESS_API_URL=
+LEXPRESS_USER=
+LEXPRESS_API_KEY=
+```
+
+## Development Workflow
+
+The development environment uses Docker volume mounts to enable hot-reloading. You do not need to install local dependencies.
+
+Use the provided `Makefile` to manage the development lifecycle:
+
+- **`make dev-build`**: Builds the development Docker images.
+- **`make dev-up`**: Starts the database, backend, and frontend containers in the background. The backend waits for the database healthcheck to pass before starting.
+- **`make dev-logs`**: Displays real-time logs for all development containers.
+- **`make dev-down`**: Stops and removes the development containers.
+
+Once running, the frontend is accessible at `http://localhost:<FRONTEND_PORT>` and the API at `http://localhost:<BACKEND_PORT>`.
+
+## Production Deployment & Cloudflare Zero Trust
+
+The production setup relies on optimized, multistage Docker builds and a secure Cloudflare Zero Trust architecture. Containers attach to an external `proxy-net` network and publish **no host ports**; a dedicated reverse proxy (managed outside this repository) terminates HTTPS and forwards traffic to the app.
+
+### Production Images (Optimized, Multistage)
+
+Each service ships its own production `Dockerfile.prod` together with a `.dockerignore` that keeps the build context small. Both images are built in separate stages so the runtime only contains what is strictly needed:
+
+- **Backend** — TypeScript is compiled ahead of time (`npx tsc -p . --outDir dist --rootDir .`) and the runner executes `node dist/index.js`. Dev-only dependencies are pruned (`npm prune --omit=dev`), the app runs as the unprivileged `node` user, and `public/` is copied so the email signature (`signature.png`) keeps working. Image: ~265 MB virtual (~155 MB of runtime content) instead of ~368 MB.
+- **Frontend** — built with Next.js standalone output (`output: "standalone"` in `frontend/next.config.ts`). Only the standalone runtime, static assets and `public/` are copied into the runner. Image: ~250 MB virtual (~51 MB of runtime content) instead of ~846 MB.
+
+`docker-compose.prod.yml` references the `Dockerfile.prod` files explicitly for both services.
+
+### 1. Launch Production Containers
+
+Use the `Makefile` to build and start the production stack:
+
+- **`make prod-build`**: Builds the production Docker images.
+- **`make prod-up`**: Starts the production containers.
+- **`make prod-logs`**: Displays real-time logs.
+- **`make prod-down`**: Stops the production containers.
+
+Changes pushed to `main` are deployed automatically by the `CD - Deploy CRM Production` GitHub Actions workflow (self-hosted runner: `git pull` → `make prod-down` → `build --no-cache` → `make prod-up` → `docker image prune -f`).
+
+### 2. Configure Cloudflare Zero Trust
+
+To safely expose the CRM to the internet without opening router ports or exposing your host IP:
+
+1. Install the `cloudflared` daemon on your host server.
+2. Authenticate `cloudflared` with your Cloudflare account.
+3. Create a new Zero Trust Tunnel via the Cloudflare Dashboard or CLI.
+4. Configure the tunnel's Public Hostname to route traffic to your local reverse proxy, which forwards to the production frontend:
+
+- **Public Hostname:** `crm.yourdomain.com`
+- **Service:** `http://localhost:<proxy-port>`
+
+5. Apply Zero Trust policies (e.g., Email OTP, Access Groups) in the Cloudflare Dashboard to restrict access to the CRM interface.
+
+## Maintenance & Best Practices
+
+To keep the repository clean and avoid breaking production, follow these maintenance guidelines:
+
+### 1. Managing Dependencies & Dependabot
+
+- **Major Updates Caution:** Be extremely careful with major version updates (e.g., updating TypeScript or core libraries). Tools like `ts-node` used in the backend can break with major TypeScript version jumps.
+- **Test Before Merge:** Always test builds locally (`npm run build` for frontend, checking execution for backend) before merging Dependabot PRs.
+- **Isolate Deployments:** When merging grouped dependency PRs, merge them one by one and verify that the CI/CD pipeline and production containers remain healthy before proceeding with the next.
+
+### 2. Hotfix Workflow (`hotfix/prod`)
+
+- **No Sync Pushes:** Do **not** push simple synchronization commits (such as `git merge main` followed by a `git push`) directly to the remote `hotfix/prod` branch if you use automated GitHub Actions to open hotfix PRs. Doing so will unnecessarily trigger and recreate redundant/ghost pull requests.
+- **Pushes Reserved for Code:** The `hotfix/prod` remote branch should only receive pushes when you are actively writing and submitting a genuine code correctif (hotfix). Use local merges only if you need to synchronize your local working branch.
+- **Clean branches after a new feature got deployed**: `git branch | grep -vE "main|hotfix/prod" | xargs git branch -D && git fetch --prune`
+
+## Customization and Adoption
+
+This CRM is designed as a foundational template.
+
+1. **Data Models:** Modify the SQL schema and TypeScript interfaces (`backend/models/types.ts` and `frontend/types/index.ts`) to track specific lead attributes.
+2. **Email Templates:** Update the regex parser (`utils/templateParser.ts`) to inject your specific business logic and variables into email campaigns.
+3. **External Integrations:** Adapt the synchronization service (`backend/services/lexpressService.ts`) to fetch data from your specific lead generation sources.

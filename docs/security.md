@@ -7,16 +7,16 @@ d'investigation côté serveur.
 
 ### Comptes et sessions
 
-| Mesure | Détail |
-| --- | --- |
-| Mots de passe | `bcryptjs` (12 facteurs par défaut via `genSalt(10)`), jamais stockés en clair |
-| Politique de mot de passe | regex minimale appliquée à la création et à chaque changement (`passwordRegex` dans `utils/validators.ts`) |
-| Session | JWT signé HS256, secret `JWT_SECRET` **obligatoire ≥ 32 caractères** — le backend refuse de démarrer sinon |
-| Expiration | 2 h (login) / 6 h (ré-authentification mode Salon) |
-| Anti-énumération | login : hash `bcrypt` factice quand l'email est inconnu, message identique ; « mot de passe oublié » répond toujours `200` sans révéler l'existence du compte |
-| Réinitialisation | token UUID **stocké haché (SHA-256)** en base, expiration 1 h, supprimé après usage ; le lien n'est envoyé que si le paramètre `password_reset_enabled` est actif |
-| Vérification d'algorithme | `jwt.verify(..., { algorithms: ["HS256"] })` — pas de confusion d'algorithme |
-| Audit | toute action CRUD sensible journalisée dans `audit_logs` (`user_id`, action, ressource, détail) |
+| Mesure                    | Détail                                                                                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mots de passe             | `bcryptjs` (12 facteurs par défaut via `genSalt(10)`), jamais stockés en clair                                                                                    |
+| Politique de mot de passe | regex minimale appliquée à la création et à chaque changement (`passwordRegex` dans `utils/validators.ts`)                                                        |
+| Session                   | JWT signé HS256, secret `JWT_SECRET` **obligatoire ≥ 32 caractères** — le backend refuse de démarrer sinon                                                        |
+| Expiration                | 2 h (login) / 6 h (ré-authentification mode Salon)                                                                                                                |
+| Anti-énumération          | login : hash `bcrypt` factice quand l'email est inconnu, message identique ; « mot de passe oublié » répond toujours `200` sans révéler l'existence du compte     |
+| Réinitialisation          | token UUID **stocké haché (SHA-256)** en base, expiration 1 h, supprimé après usage ; le lien n'est envoyé que si le paramètre `password_reset_enabled` est actif |
+| Vérification d'algorithme | `jwt.verify(..., { algorithms: ["HS256"] })` — pas de confusion d'algorithme                                                                                      |
+| Audit                     | toute action CRUD sensible journalisée dans `audit_logs` (`user_id`, action, ressource, détail)                                                                   |
 
 ### Limitation de débit
 
@@ -26,8 +26,8 @@ d'investigation côté serveur.
   - `POST /api/users/forgot-password` : 30 / 30 min par IP + 10 / 30 min par email ;
   - `POST /api/users/reset-password` : 30 / 30 min par IP ;
   - `POST /api/webhooks/wordpress` : 60 / 15 min par IP (brute-force du secret).
-- **Edge nginx** : fail2ban avec jail `nginx-limit-req` (voir README, section
-  Fail2ban).
+- **Edge nginx** : fail2ban avec jail `nginx-limit-req` (voir la section
+  Fail2ban ci-dessous).
 
 ### Entrées et erreurs
 
@@ -51,16 +51,16 @@ Restreint à `FRONTEND_URL` (pas de `*`), méthodes et en-têtes limités.
 
 ### Conteneurs (prod)
 
-| Mesure | Backend | Frontend | DB |
-| --- | --- | --- | --- |
-| Utilisateur non-root | `USER node` | `USER node` | utilisateur `mysql` |
-| `cap_drop: ALL` | ✅ | ✅ | — |
-| `no-new-privileges` | ✅ | ✅ | ✅ |
-| Système de fichiers | `read_only` + `tmpfs /tmp` | écriture limitée (cache Next) | volume dédié |
-| Ports hôte | aucun | aucun | aucun |
-| Réseau | `internal` + `proxy-net` | `internal` + `proxy-net` | `internal` uniquement |
-| Healthcheck | `/healthz` (ping DB) | `GET /` | `healthcheck.sh` |
-| `dump.sql` | — | — | monté en lecture seule |
+| Mesure               | Backend                    | Frontend                      | DB                     |
+| -------------------- | -------------------------- | ----------------------------- | ---------------------- |
+| Utilisateur non-root | `USER node`                | `USER node`                   | utilisateur `mysql`    |
+| `cap_drop: ALL`      | ✅                         | ✅                            | —                      |
+| `no-new-privileges`  | ✅                         | ✅                            | ✅                     |
+| Système de fichiers  | `read_only` + `tmpfs /tmp` | écriture limitée (cache Next) | volume dédié           |
+| Ports hôte           | aucun                      | aucun                         | aucun                  |
+| Réseau               | `internal` + `proxy-net`   | `internal` + `proxy-net`      | `internal` uniquement  |
+| Healthcheck          | `/healthz` (ping DB)       | `GET /`                       | `healthcheck.sh`       |
+| `dump.sql`           | —                          | —                             | monté en lecture seule |
 
 Les services ne sont joignables que via le proxy nginx (réseau `proxy-net`),
 jamais depuis l'hôte ou Internet.
@@ -75,15 +75,15 @@ jamais depuis l'hôte ou Internet.
 
 ## Limites assumées
 
-| Sujet | État |
-| --- | --- |
-| Stockage du JWT | `localStorage` côté client : un XSS réussi vole le token. Atténué par l'absence d'injection de HTML utilisateur et par la durée courte (2 h). La migration vers un cookie `httpOnly` est le chantier recommandé |
-| CSRF | pas de jeton CSRF — le JWT voyage dans l'en-tête `Authorization`, pas en cookie : les requêtes cross-site ne portent pas le token |
-| CSP | pas de `Content-Security-Policy` stricte au niveau applicatif ; à poser côté nginx (voir ci-dessous) après test |
-| Révocation de JWT | un token volé reste valide jusqu'à expiration ; pas de liste noire |
-| HTTPS | terminé par nginx (certbot) ; HSTS à activer côté nginx |
-| `/api/settings/:key` | lecture publique (booléen) — assumé, ne jamais y stocker de secret |
-| Dump initial | `dump.sql` sert à initialiser un volume vide ; ne contient que le schéma, jamais de données |
+| Sujet                | État                                                                                                                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stockage du JWT      | `localStorage` côté client : un XSS réussi vole le token. Atténué par l'absence d'injection de HTML utilisateur et par la durée courte (2 h). La migration vers un cookie `httpOnly` est le chantier recommandé |
+| CSRF                 | pas de jeton CSRF — le JWT voyage dans l'en-tête `Authorization`, pas en cookie : les requêtes cross-site ne portent pas le token                                                                               |
+| CSP                  | pas de `Content-Security-Policy` stricte au niveau applicatif ; à poser côté nginx (voir ci-dessous) après test                                                                                                 |
+| Révocation de JWT    | un token volé reste valide jusqu'à expiration ; pas de liste noire                                                                                                                                              |
+| HTTPS                | terminé par nginx (certbot) ; HSTS à activer côté nginx                                                                                                                                                         |
+| `/api/settings/:key` | lecture publique (booléen) — assumé, ne jamais y stocker de secret                                                                                                                                              |
+| Dump initial         | `dump.sql` sert à initialiser un volume vide ; ne contient que le schéma, jamais de données                                                                                                                     |
 
 ## Recommandations nginx (hors dépôt, à poser dans `conf.d`)
 
@@ -108,6 +108,39 @@ add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" alway
 - Ne jamais committer `.env`, `dump.sql` avec données, ni aucun secret.
 - Ne pas rouvrir `cors()` sans restriction d'origine.
 - Ne pas retirer `USER node` des Dockerfiles de prod.
+
+## Maintenance courante (serveur)
+
+Commandes d'exploitation.
+
+### Proxy (nginx + certbot)
+
+```sh
+make proxy-up / proxy-down / proxy-restart / proxy-status    # cycle de vie
+make proxy-logs / proxy-logs-error                           # logs des 2 conteneurs
+docker exec nginx-proxy-prod nginx -t                        # test config
+docker exec nginx-proxy-prod nginx -s reload                 # reload conf
+```
+
+### Fail2ban
+
+```sh
+sudo fail2ban-client status                          # tous les jails
+sudo fail2ban-client status nginx-limit-req          # jail + bans
+make f2b-status / f2b-banned                         # raccourcis
+make f2b-unban IP=x.x.x.x                            # débannir
+sudo fail2ban-client set nginx-limit-req addignoreip x.x.x.x   # whitelist runtime
+# whitelist persistante : /etc/fail2ban/jail.local → ignoreip puis
+# sudo systemctl restart fail2ban
+```
+
+### Certificats et logs
+
+```sh
+make cert-renew / cert-renew-dry                     # renew + reload nginx / dry-run
+sudo logrotate -d /etc/logrotate.d/nginx-docker      # dry-run rotation
+sudo logrotate -f /etc/logrotate.d/nginx-docker      # forcer la rotation
+```
 
 ## Surveillance et investigation du serveur
 
@@ -233,7 +266,7 @@ sudo find / -xdev -type f -perm -4000 2>/dev/null
 
 ```sh
 # Ports ouverts sur toutes les interfaces
-sudo ss -tulpn | grep -E "0.0.0.0|:::" 
+sudo ss -tulpn | grep -E "0.0.0.0|:::"
 # En prod, seuls 80/443 (nginx) et 22 (SSH) devraient être en 0.0.0.0.
 # Si 3306 ou 5000 apparaissent, c'est anormal.
 
@@ -246,7 +279,7 @@ docker port $(docker ps -q) 2>/dev/null
 1. **Isoler** : `docker compose -f docker-compose.prod.yml stop` (l'app),
    garder les volumes et images pour l'analyse.
 2. **Figer les preuves** : `sudo tar czf /tmp/forensics-$(date +%s).tgz
-   /home/jeanxxiii-apps/nginx/logs` et un dump des logs Docker.
+/home/jeanxxiii-apps/nginx/logs` et un dump des logs Docker.
 3. **Bannir** : `sudo fail2ban-client set nginx-limit-req banip <IP>`.
 4. **Changer les secrets** : `JWT_SECRET`, mots de passe DB, `WEBHOOK_SECRET`,
    SMTP, L'Express (`.env` puis `make prod-restart`).
