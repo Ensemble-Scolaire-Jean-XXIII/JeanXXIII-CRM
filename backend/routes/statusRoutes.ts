@@ -10,7 +10,7 @@ router.get("/", authenticate, async (req, res) => {
     const statuses = await statusService.getAllStatuses();
     res.json(statuses);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -20,7 +20,7 @@ router.get("/:id", authenticate, async (req, res) => {
     if (!status) return res.status(404).json({ error: "Not found" });
     res.json(status);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -34,7 +34,7 @@ router.post("/", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Un statut avec ce nom existe déjà" });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -64,7 +64,7 @@ router.put("/:id", authenticate, async (req: any, res) => {
         .status(400)
         .json({ error: "Un statut avec ce nom existe déjà" });
     }
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
@@ -100,7 +100,7 @@ router.delete("/:id", authenticate, async (req: any, res) => {
       });
     }
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 

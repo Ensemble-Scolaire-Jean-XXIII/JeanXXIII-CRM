@@ -14,7 +14,9 @@ export const authenticate = (
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ["HS256"],
+    });
     (req as any).user = decoded;
     next();
   } catch (error) {

@@ -11,9 +11,23 @@ services:
       TZ: Europe/Paris
     volumes:
       - db_data_prod:/var/lib/mysql
-      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "healthcheck.sh",
+          "--connect",
+          "--innodb_initialized",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - internal
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -26,6 +40,8 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     environment:
+      NODE_ENV: production
+      TRUST_PROXY: "true"
       DB_HOST: db-jeanxxiii-crm-prod
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
@@ -42,10 +58,30 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
-      - db-jeanxxiii-crm
+      db-jeanxxiii-crm:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - internal
       - proxy-net
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -58,10 +94,27 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     depends_on:
-      - backend-jeanxxiii-crm
+      backend-jeanxxiii-crm:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - internal
       - proxy-net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

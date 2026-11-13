@@ -16,7 +16,7 @@ router.get("/", authenticate, async (req: any, res) => {
     res.json(logs);
   } catch (error) {
     console.error("Erreur GET logs:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Erreur interne au serveur" });
   }
 });
 
